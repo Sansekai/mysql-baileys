@@ -12,9 +12,9 @@
 	],
 	"scripts": {
 		"release": "release-it",
-		"build": "tsc",
-		"prepack": "tsc",
 		"prepare": "tsc",
+		"prepack": "tsc",
+		"build": "tsc",
 		"build:tsc": "tsc",
 		"build:docs": "typedoc",
 		"build:all": "tsc && typedoc",
@@ -28,22 +28,14 @@
 		"url": "git+ssh://git@github.com/bobslavtriev/mysql-baileys.git"
 	},
 	"dependencies": {
-		"libsignal": "github:adiwajshing/libsignal-node",
-		"mysql2": "^3.3.5",
-		"uuid": "^9.0.0"
+		"mysql2": "^3.9.8"
 	},
 	"devDependencies": {
-		"@adiwajshing/eslint-config": "github:adiwajshing/eslint-config",
-		"@types/node": "^16.18.69",
-		"@types/uuid": "^9.0.8",
-		"@typescript-eslint/eslint-plugin": "^6.18.0",
-		"@typescript-eslint/parser": "^6.18.0",
-		"@whiskeysockets/baileys": "^6.7.0",
-		"conventional-changelog-cli": "^2.2.2",
-		"eslint": "^8.56.0",
-		"release-it": "^15.10.3",
-		"typedoc": "^0.24.7",
-		"ts-node": "^10.8.1",
-		"typescript": "^4.6.4"
+		"@typescript-eslint/eslint-plugin": "^7.11.0",
+		"@typescript-eslint/parser": "^7.11.0",
+		"conventional-changelog-cli": "^5.0.0",
+		"eslint": "^9.3.0",
+		"release-it": "^17.3.0",
+		"typedoc": "^0.25.13"
 	}
 }
