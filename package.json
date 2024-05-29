@@ -28,10 +28,9 @@
 		"mysql2": "^3.9.8"
 	},
 	"devDependencies": {
-		"@types/long": "^5.0.0",
-		"@types/node": "^20.12.12",
 		"@typescript-eslint/eslint-plugin": "^7.11.0",
 		"@typescript-eslint/parser": "^7.11.0",
+		"@types/node": "^20.12.12",
 		"eslint": "^8.55.0",
 		"release-it": "^17.3.0",
 		"ts-node": "^10.9.2",
