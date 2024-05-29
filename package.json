@@ -19,10 +19,7 @@
 		"build:docs": "typedoc",
 		"build:all": "tsc && typedoc",
 		"lint": "eslint src --ext .ts",
-		"lint:fix": "eslint src --fix --ext .ts",
-		"changelog:last": "conventional-changelog -p angular -r 2",
-		"changelog:preview": "conventional-changelog -p angular -u",
-		"changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0"
+		"lint:fix": "eslint src --fix --ext .ts"
 	},
 	"repository": {
 		"url": "git+ssh://git@github.com/bobslavtriev/mysql-baileys.git"
@@ -31,11 +28,13 @@
 		"mysql2": "^3.9.8"
 	},
 	"devDependencies": {
+		"@types/node": "^20.12.12",
 		"@typescript-eslint/eslint-plugin": "^7.11.0",
 		"@typescript-eslint/parser": "^7.11.0",
-		"conventional-changelog-cli": "^5.0.0",
-		"eslint": "^9.3.0",
+		"eslint": "^8.55.0",
 		"release-it": "^17.3.0",
-		"typedoc": "^0.25.13"
+		"ts-node": "^10.9.2",
+		"typedoc": "^0.25.13",
+		"typescript": "^5.4.5"
 	}
 }
