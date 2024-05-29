@@ -1,32 +1,30 @@
 import { createConnection } from 'mysql2/promise'
-import { proto } from '@whiskeysockets/baileys'
-import { BufferJSON, initAuthCreds } from '../Utils'
-import { MySQLConfig, sqlData, sqlConnection, AuthenticationCreds } from '../Types'
+import { BufferJSON, initAuthCreds, fromObject } from '../Utils'
+import { MySQLConfig, sqlData, AuthenticationCreds, AuthenticationState, sqlConnection } from '../Types'
 
 /**
  * Stores the full authentication state in mysql
  * Far more efficient than file
  * @param {string} host - MySql host, by default localhost
- * @param {string} port - MySql port, by default 3306
+ * @param {number} port - MySql port, by default 3306
  * @param {string} user - MySql user, by default root
  * @param {string} password - MySql password
  * @param {string} database - MySql database name
  * @param {string} tableName - MySql table name, by default auth
- * @param {string} keepAliveIntervalMs - Always keep active, by default 30s
- * @param {string} retryRequestDelayMs - Retry the query at each interval if it fails, by default 200ms
- * @param {string} maxtRetries - Maximum attempts if the query fails, by default 10
+ * @param {number} keepAliveIntervalMs - Always keep active, by default 30s
+ * @param {number} retryRequestDelayMs - Retry the query at each interval if it fails, by default 200ms
+ * @param {number} maxtRetries - Maximum attempts if the query fails, by default 10
  * @param {string} session - Session name to identify the connection, allowing multisessions with mysql
+ * @param {SslOptions} sql - Options for connections with SSL
  */
 
 let conn: sqlConnection
-let pending: boolean | undefined
-let taskKeepAlive: NodeJS.Timeout | undefined
-const DEFAULT_TABLE_NAME = 'auth';
+let pending: boolean
+let taskKeepAlive: NodeJS.Timeout
 
-async function connection(config: MySQLConfig, force: true | false = false){
+async function connection(config: MySQLConfig, force: boolean = false){
 	const ended = !!conn?.connection?._closing
 	const newConnection = conn === undefined
-	const tableName = config?.tableName || DEFAULT_TABLE_NAME
 
 	if (newConnection || ended || force){
 		pending = true
@@ -43,7 +41,7 @@ async function connection(config: MySQLConfig, force: true | false = false){
 		})
 
 		if (newConnection) {
-			await conn.execute('CREATE TABLE IF NOT EXISTS `' + tableName + '` (`session` varchar(50) NOT NULL, `id` varchar(70) NOT NULL, `value` json DEFAULT NULL, UNIQUE KEY `idxunique` (`session`,`id`), KEY `idxsession` (`session`), KEY `idxid` (`id`)) ENGINE=MyISAM;')
+			await conn.execute('CREATE TABLE IF NOT EXISTS `?` (`session` varchar(50) NOT NULL, `id` varchar(20) NOT NULL, `value` json DEFAULT NULL, UNIQUE KEY `idxunique` (`session`,`id`), KEY `idxsession` (`session`), KEY `idxid` (`id`)) ENGINE=MyISAM;', [ config.tableName ])
 		}
 
 		pending = false
@@ -52,13 +50,13 @@ async function connection(config: MySQLConfig, force: true | false = false){
 	return conn
 }
 
-export const useMySQLAuthState = async(config: MySQLConfig): Promise<{ state: object, saveCreds: () => Promise<void>, clear: () => Promise<void>, removeCreds: () => Promise<void> }> => {
-	if (typeof config?.session !== 'string'){
-		throw new Error('session name must be a string')
-	}
+export const useMySQLAuthState = async(config: MySQLConfig): Promise<{ state: AuthenticationState, saveCreds: () => Promise<void>, clear: () => Promise<void>, removeCreds: () => Promise<void> }> => {
+	config.tableName = config.tableName || 'auth'
 
 	let sqlConn = await connection(config)
 
+	const session = config.session
+	const tableName = config?.tableName
 	const keepAliveIntervalMs = config?.keepAliveIntervalMs || 30_000
 	const retryRequestDelayMs = config?.retryRequestDelayMs || 200
 	const maxtRetries = config?.maxtRetries || 10
@@ -74,17 +72,14 @@ export const useMySQLAuthState = async(config: MySQLConfig): Promise<{ state: ob
 	}
 
 	taskKeepAlive = setInterval(async () => {
-		await conn.ping().catch(async () => await reconnect())
-		if (conn?.connection?._closing){
+		const ping = await conn.ping().catch(() => null)
+
+		if (!ping || conn?.connection?._closing){
 			await reconnect()
 		}
 	}, keepAliveIntervalMs)
 
-	const session = config.session
-
-	const tableName = config?.tableName || DEFAULT_TABLE_NAME
-
-	const query = async (sql: string, values: Array<string>) => {
+	const query = async (sql: string, values: string[]) => {
 		for (let x = 0; x < maxtRetries; x++){
 			try {
 				const [rows] = await sqlConn.query(sql, values)
@@ -93,7 +88,7 @@ export const useMySQLAuthState = async(config: MySQLConfig): Promise<{ state: ob
 				await new Promise(r => setTimeout(r, retryRequestDelayMs))
 			}
 		}
-		return [] as sqlData 
+		return [] as sqlData
 	}
 
 	const readData = async (id: string) => {
@@ -123,24 +118,28 @@ export const useMySQLAuthState = async(config: MySQLConfig): Promise<{ state: ob
 		await query(`DELETE FROM ${tableName} WHERE session = ?`, [session])
 	}
 
-	const creds: AuthenticationCreds = await readData('creds') || initAuthCreds()
+	let creds: AuthenticationCreds = await readData('creds')
+
+	if (!creds || !creds.registered){
+		creds = initAuthCreds()
+	}
 
 	return {
 		state: {
-			creds,
+			creds: creds,
 			keys: {
-				get: async (type: string, ids: Array<string>) => {
+				get: async (type, ids) => {
 					const data = { }
 					for(const id of ids){
 						let value = await readData(`${type}-${id}`)
-						if(type === 'app-state-sync-key' && value) {
-							value = proto.Message.AppStateSyncKeyData.fromObject(value)
+						if (type === 'app-state-sync-key' && value){
+							value = fromObject(value)
 						}
 						data[id] = value
 					}
 					return data
 				},
-				set: async (data: Array<object>) => {
+				set: async (data) => {
 					for(const category in data) {
 						for(const id in data[category]) {
 							const value = data[category][id];
