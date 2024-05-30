@@ -70,7 +70,7 @@ interface RegistrationOptions {
 	captcha?: string
 }
 
-export interface Bits {
+export interface Long {
     high: number;
     low: number;
     unsigned: boolean;
@@ -149,16 +149,16 @@ export type Fingerprint = {
 	deviceIndexes: number[]
 }
 
-//export type Bits = {
-//	low: number
-//	high: number
-//	unsigned: boolean
-//}
+export type Bits = {
+	low: number
+	high: number
+	unsigned: boolean
+}
 
 export type AppDataSync = {
-    keyData: Uint8Array | null
-    fingerprint: Fingerprint | null
-    timestamp: Bits | number | null
+    keyData: Uint8Array
+    fingerprint: Fingerprint
+    timestamp: Long | number | null
 }
 
 export type SignalDataTypeMap = {
