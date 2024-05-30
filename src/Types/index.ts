@@ -158,7 +158,7 @@ export type Bits = {
 export type AppDataSync = {
     keyData: Uint8Array
     fingerprint: Fingerprint
-    timestamp: Long | number | null
+    timestamp: Long | number
 }
 
 export type SignalDataTypeMap = {
