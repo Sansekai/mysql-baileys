@@ -70,6 +70,65 @@ interface RegistrationOptions {
 	captcha?: string
 }
 
+export interface Bits {
+    high: number;
+    low: number;
+    unsigned: boolean;
+    add( addend: number | Long | string ): Long;
+    and( other: Long | number | string ): Long;
+    compare( other: Long | number | string ): number;
+    comp( other: Long | number | string ): number;
+    divide( divisor: Long | number | string ): Long;
+    div( divisor: Long | number | string ): Long;
+    equals( other: Long | number | string ): boolean;
+    eq( other: Long | number | string ): boolean;
+    getHighBits(): number;
+    getHighBitsUnsigned(): number;
+    getLowBits(): number;
+    getLowBitsUnsigned(): number;
+    getNumBitsAbs(): number;
+    greaterThan( other: Long | number | string ): boolean;
+    gt( other: Long | number | string ): boolean;
+    greaterThanOrEqual( other: Long | number | string ): boolean;
+    gte( other: Long | number | string ): boolean;
+    isEven(): boolean;
+    isNegative(): boolean;
+    isOdd(): boolean;
+    isPositive(): boolean;
+    isZero(): boolean;
+    lessThan( other: Long | number | string ): boolean;
+    lt( other: Long | number | string ): boolean;
+    lessThanOrEqual( other: Long | number | string ): boolean;
+    lte( other: Long | number | string ): boolean;
+    modulo( other: Long | number | string ): Long;
+    mod( other: Long | number | string ): Long;
+    multiply( multiplier: Long | number | string ): Long;
+    mul( multiplier: Long | number | string ): Long;
+    negate(): Long;
+    neg(): Long;
+    not(): Long;
+    notEquals( other: Long | number | string ): boolean;
+    neq( other: Long | number | string ): boolean;
+    or( other: Long | number | string ): Long;
+    shiftLeft( numBits: number | Long ): Long;
+    shl( numBits: number | Long ): Long;
+    shiftRight( numBits: number | Long ): Long;
+    shr( numBits: number | Long ): Long;
+    shiftRightUnsigned( numBits: number | Long ): Long;
+    shru( numBits: number | Long ): Long;
+    subtract( subtrahend: number | Long | string ): Long;
+    sub( subtrahend: number | Long |string ): Long;
+    toInt(): number;
+    toNumber(): number;
+    toBytes( le?: boolean ): number[];
+    toBytesLE(): number[];
+    toBytesBE(): number[];
+    toSigned(): Long;
+    toString( radix?: number ): string;
+    toUnsigned(): Long;
+    xor( other: Long | number | string ): Long;
+}
+
 export type SslOptions = {
 	pfx?: string
 	key?: string | string[] | Buffer | Buffer[]
@@ -90,16 +149,16 @@ export type Fingerprint = {
 	deviceIndexes: number[]
 }
 
-export type Bits = {
-	low: number
-	high: number
-	unsigned: boolean
-}
+//export type Bits = {
+//	low: number
+//	high: number
+//	unsigned: boolean
+//}
 
 export type AppDataSync = {
     keyData: Uint8Array | null
     fingerprint: Fingerprint | null
-    timestamp: Long | number | null
+    timestamp: Bits | number | null
 }
 
 export type SignalDataTypeMap = {
