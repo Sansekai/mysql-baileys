@@ -56,14 +56,11 @@ type AccountSettings = {
 }
 
 type SignalKeyStore = {
-	get<T extends keyof SignalDataTypeMap>(type: T, ids: string[]): Awaitable<{
-		[id: string]: SignalDataTypeMap[T]
-	}>
+	get<T extends keyof SignalDataTypeMap>(type: T, ids: string[]): Awaitable<{ [id: string]: SignalDataTypeMap[T] }>
 	set(data: SignalDataSet): Awaitable<void>
-	clear?(): Awaitable<void>
 }
 
-type RegistrationOptions = {
+interface RegistrationOptions {
 	phoneNumber?: string
 	phoneNumberCountryCode: string
 	phoneNumberNationalNumber: string
@@ -74,17 +71,17 @@ type RegistrationOptions = {
 }
 
 export type SslOptions = {
-	pfx?: string;
-	key?: string | string[] | Buffer | Buffer[];
-	passphrase?: string;
-	cert?: string | string[] | Buffer | Buffer[];
-	ca?: string | string[] | Buffer | Buffer[];
-	crl?: string | string[];
-	ciphers?: string;
-	rejectUnauthorized?: boolean;
-	minVersion?: string;
-	maxVersion?: string;
-	verifyIdentity?: boolean;
+	pfx?: string
+	key?: string | string[] | Buffer | Buffer[]
+	passphrase?: string
+	cert?: string | string[] | Buffer | Buffer[]
+	ca?: string | string[] | Buffer | Buffer[]
+	crl?: string | string[]
+	ciphers?: string
+	rejectUnauthorized?: boolean
+	minVersion?: string
+	maxVersion?: string
+	verifyIdentity?: boolean
 }
 
 export type Fingerprint = {
@@ -100,9 +97,9 @@ export type Bits = {
 }
 
 export type AppDataSync = {
-	keyData: Uint8Array
-	fingerprint: Fingerprint
-	timestamp: Long | number
+    keyData: Uint8Array | null
+    fingerprint: Fingerprint | null
+    timestamp: Long | number | null
 }
 
 export type SignalDataTypeMap = {
