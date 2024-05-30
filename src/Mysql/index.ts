@@ -1,6 +1,6 @@
 import { createConnection } from 'mysql2/promise'
 import { BufferJSON, initAuthCreds, fromObject } from '../Utils'
-import { MySQLConfig, sqlData, AuthenticationCreds, AuthenticationState, sqlConnection } from '../Types'
+import { MySQLConfig, sqlData, AuthenticationCreds, AuthenticationState, sqlConnection, SignalDataTypeMap } from '../Types'
 
 /**
  * Stores the full authentication state in mysql
@@ -20,7 +20,6 @@ import { MySQLConfig, sqlData, AuthenticationCreds, AuthenticationState, sqlConn
 
 let conn: sqlConnection
 let pending: boolean
-let taskKeepAlive: NodeJS.Timeout
 
 async function connection(config: MySQLConfig, force: boolean = false){
 	const ended = !!conn?.connection?._closing
@@ -30,18 +29,18 @@ async function connection(config: MySQLConfig, force: boolean = false){
 		pending = true
 
 		conn = await createConnection({
-			host: config?.host || 'localhost',
-			port: config?.port || 3306,
-			user: config?.user || 'root',
+			host: config.host || 'localhost',
+			port: config.port || 3306,
+			user: config.user || 'root',
 			password: config.password || 'Password123#',
 			database: config.database || 'base',
-			ssl: config?.ssl
-		}).catch((e) => {
-			throw e
+			enableKeepAlive: true,
+			keepAliveInitialDelay: 5000,
+			ssl: config.ssl
 		})
 
 		if (newConnection) {
-			await conn.execute('CREATE TABLE IF NOT EXISTS `?` (`session` varchar(50) NOT NULL, `id` varchar(20) NOT NULL, `value` json DEFAULT NULL, UNIQUE KEY `idxunique` (`session`,`id`), KEY `idxsession` (`session`), KEY `idxid` (`id`)) ENGINE=MyISAM;', [ config.tableName ])
+			await conn.execute('CREATE TABLE IF NOT EXISTS `?` (`session` varchar(50) NOT NULL, `id` varchar(50) NOT NULL, `value` json DEFAULT NULL, UNIQUE KEY `idxunique` (`session`,`id`), KEY `idxsession` (`session`), KEY `idxid` (`id`)) ENGINE=MyISAM;', [ config.tableName || 'auth' ])
 		}
 
 		pending = false
@@ -51,33 +50,11 @@ async function connection(config: MySQLConfig, force: boolean = false){
 }
 
 export const useMySQLAuthState = async(config: MySQLConfig): Promise<{ state: AuthenticationState, saveCreds: () => Promise<void>, clear: () => Promise<void>, removeCreds: () => Promise<void> }> => {
-	config.tableName = config.tableName || 'auth'
+	const sqlConn = await connection(config)
 
-	let sqlConn = await connection(config)
-
-	const session = config.session
-	const tableName = config?.tableName
-	const keepAliveIntervalMs = config?.keepAliveIntervalMs || 30_000
-	const retryRequestDelayMs = config?.retryRequestDelayMs || 200
-	const maxtRetries = config?.maxtRetries || 10
-
-	const reconnect = async () => {
-		if (!pending){
-			sqlConn = await connection(config, true)
-		}
-	}
-
-	if (taskKeepAlive){
-		clearInterval(taskKeepAlive)
-	}
-
-	taskKeepAlive = setInterval(async () => {
-		const ping = await conn.ping().catch(() => null)
-
-		if (!ping || conn?.connection?._closing){
-			await reconnect()
-		}
-	}, keepAliveIntervalMs)
+	const tableName = config.tableName || 'auth'
+	const retryRequestDelayMs = config.retryRequestDelayMs || 200
+	const maxtRetries = config.maxtRetries || 10
 
 	const query = async (sql: string, values: string[]) => {
 		for (let x = 0; x < maxtRetries; x++){
@@ -92,7 +69,7 @@ export const useMySQLAuthState = async(config: MySQLConfig): Promise<{ state: Au
 	}
 
 	const readData = async (id: string) => {
-		const data = await query(`SELECT value FROM ${tableName} WHERE id = ? AND session = ?`, [id, session])
+		const data = await query(`SELECT value FROM ${tableName} WHERE id = ? AND session = ?`, [id, config.session])
 		if(!data[0]?.value){
 			return null
 		}
@@ -103,24 +80,24 @@ export const useMySQLAuthState = async(config: MySQLConfig): Promise<{ state: Au
 
 	const writeData = async (id: string, value: object) => {
 		const valueFixed = JSON.stringify(value, BufferJSON.replacer)
-		await query(`INSERT INTO ${tableName} (value, id, session) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE value = ?`, [valueFixed, id, session, valueFixed])
+		await query(`INSERT INTO ${tableName} (id, session, value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE value = ?`, [id, config.session, valueFixed, valueFixed])
 	}
 
 	const removeData = async (id: string) => {
-		await query(`DELETE FROM ${tableName} WHERE id = ? AND session = ?`, [id, session])
+		await query(`DELETE FROM ${tableName} WHERE id = ? AND session = ?`, [id, config.session])
 	}
 
 	const clearAll = async () => {
-		await query(`DELETE FROM ${tableName} WHERE id != 'creds' AND session = ?`, [session])
+		await query(`DELETE FROM ${tableName} WHERE id != 'creds' AND session = ?`, [config.session])
 	}
 
 	const removeAll = async () => {
-		await query(`DELETE FROM ${tableName} WHERE session = ?`, [session])
+		await query(`DELETE FROM ${tableName} WHERE session = ?`, [config.session])
 	}
 
 	let creds: AuthenticationCreds = await readData('creds')
 
-	if (!creds || !creds.registered){
+	if (!creds?.registered){
 		creds = initAuthCreds()
 	}
 
@@ -129,7 +106,7 @@ export const useMySQLAuthState = async(config: MySQLConfig): Promise<{ state: Au
 			creds: creds,
 			keys: {
 				get: async (type, ids) => {
-					const data = { }
+					const data: { [id: string]: SignalDataTypeMap[typeof type] } = { }
 					for(const id of ids){
 						let value = await readData(`${type}-${id}`)
 						if (type === 'app-state-sync-key' && value){
@@ -142,7 +119,7 @@ export const useMySQLAuthState = async(config: MySQLConfig): Promise<{ state: Au
 				set: async (data) => {
 					for(const category in data) {
 						for(const id in data[category]) {
-							const value = data[category][id];
+							const value = data[category][id]
 							const name = `${category}-${id}`
 							if (value){
 								await writeData(name, value)
